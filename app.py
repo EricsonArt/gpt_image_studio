@@ -8,12 +8,22 @@ import os
 import sys
 os.environ.setdefault("PYTHONUTF8", "1")
 os.environ.setdefault("PYTHONIOENCODING", "utf-8")
-if hasattr(sys.stdout, "reconfigure"):
-    try:
-        sys.stdout.reconfigure(encoding="utf-8")
-        sys.stderr.reconfigure(encoding="utf-8")
-    except Exception:
-        pass
+for _s in (sys.stdout, sys.stderr):
+    if hasattr(_s, "reconfigure"):
+        try:
+            _s.reconfigure(encoding="utf-8", errors="replace")
+        except Exception:
+            pass
+    elif hasattr(_s, "buffer"):
+        try:
+            import io as _io
+            _wrapped = _io.TextIOWrapper(_s.buffer, encoding="utf-8", errors="replace")
+            if _s is sys.stdout:
+                sys.stdout = _wrapped
+            else:
+                sys.stderr = _wrapped
+        except Exception:
+            pass
 
 import io
 import time

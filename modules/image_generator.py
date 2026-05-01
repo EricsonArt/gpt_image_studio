@@ -20,7 +20,7 @@ _QUALITY_SUFFIX = {
 def _client() -> OpenAI:
     api_key = config.get_secret("OPENAI_API_KEY")
     if not api_key:
-        raise RuntimeError("Brak OPENAI_API_KEY — wpisz klucz w sidebarze.")
+        raise RuntimeError("Brak OPENAI_API_KEY - wpisz klucz w sidebarze.")
     return OpenAI(api_key=api_key)
 
 
@@ -63,7 +63,7 @@ def generate_images(
 ) -> List[bytes]:
     """Generuje n obrazów. Zwraca listę bajtów PNG."""
     if not prompt.strip():
-        raise ValueError("Prompt nie może być pusty.")
+        raise ValueError("Prompt nie moze byc pusty.")
 
     client = _client()
     full_prompt = _enrich_prompt(prompt, quality, negative_prompt)
