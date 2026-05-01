@@ -65,7 +65,7 @@ def upscale_to_4k(image_bytes: bytes, allow_fallback: bool = True) -> bytes:
         except Exception as e:
             if not allow_fallback:
                 raise
-            print(f"[upscaler] Replicate failed: {e}, fallback Lanczos")
+            print(f"[upscaler] Replicate failed, fallback Lanczos")
     return _upscale_lanczos(image_bytes, scale=2)
 
 

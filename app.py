@@ -3,6 +3,18 @@
 Higgsfield-style generator obrazów oparty na gpt-image-2.
 """
 
+# Wymuszamy UTF-8 wszędzie przed importem czegokolwiek
+import os
+import sys
+os.environ.setdefault("PYTHONUTF8", "1")
+os.environ.setdefault("PYTHONIOENCODING", "utf-8")
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+
 import io
 import time
 from pathlib import Path

@@ -10,7 +10,7 @@ from typing import Dict, Tuple
 
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(encoding="utf-8")
 
 ROOT_DIR = Path(__file__).parent
 OUTPUTS_DIR = ROOT_DIR / "outputs"
