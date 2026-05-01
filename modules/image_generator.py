@@ -1,4 +1,4 @@
-"""Wrapper na OpenAI gpt-image-2 (generations + edits)."""
+"""Wrapper na OpenAI gpt-image-2."""
 
 import base64
 import io
@@ -9,10 +9,7 @@ from openai import OpenAI
 
 import config
 
-# Parametry nieobsługiwane przez gpt-image-2 w generate/edit
-_UNSUPPORTED = {"quality", "response_format"}
-
-# Mapowanie quality -> sufiks promptu (gpt-image-2 nie ma param quality)
+# quality → sufiks promptu (gpt-image-2 nie obsługuje param quality)
 _QUALITY_SUFFIX = {
     "low":    "",
     "medium": "high quality",
@@ -34,7 +31,6 @@ def _named_buf(data: bytes, name: str = "image.png") -> io.BytesIO:
 
 
 def _extract_images(result) -> List[bytes]:
-    """Obsługuje b64_json i url w odpowiedzi."""
     out = []
     for item in result.data:
         if getattr(item, "b64_json", None):
@@ -46,15 +42,9 @@ def _extract_images(result) -> List[bytes]:
     return out
 
 
-def _build_size(aspect: str, resolution: str) -> str:
-    native = config.native_resolution(resolution)
-    w, h = config.SIZE_MAP[(aspect, native)]
-    return f"{w}x{h}"
-
-
 def _enrich_prompt(prompt: str, quality: str, negative_prompt: str = "") -> str:
-    suffix = _QUALITY_SUFFIX.get(quality, "")
     full = prompt.strip()
+    suffix = _QUALITY_SUFFIX.get(quality, "")
     if suffix:
         full = f"{full}, {suffix}"
     if negative_prompt.strip():
@@ -77,28 +67,32 @@ def generate_images(
 
     client = _client()
     full_prompt = _enrich_prompt(prompt, quality, negative_prompt)
-    size = _build_size(aspect_ratio, resolution)
+    size = config.get_size(aspect_ratio, resolution)
 
-    if reference_images:
-        named = [_named_buf(img, f"ref_{i}.png") for i, img in enumerate(reference_images)]
-        result = client.images.edit(
-            model=config.MODEL_ID,
-            prompt=full_prompt,
-            image=named,
-            size=size,
-            n=n,
-        )
-    else:
-        result = client.images.generate(
-            model=config.MODEL_ID,
-            prompt=full_prompt,
-            size=size,
-            n=n,
-        )
+    try:
+        if reference_images:
+            named = [_named_buf(img, f"ref_{i}.png") for i, img in enumerate(reference_images)]
+            result = client.images.edit(
+                model=config.MODEL_ID, prompt=full_prompt, image=named, size=size, n=n,
+            )
+        else:
+            result = client.images.generate(
+                model=config.MODEL_ID, prompt=full_prompt, size=size, n=n,
+            )
+    except Exception as e:
+        err_str = str(e)
+        if "must be verified" in err_str or "403" in err_str:
+            raise RuntimeError(
+                "Twoja organizacja OpenAI nie jest jeszcze zweryfikowana.\n\n"
+                "Weryfikacja jest wymagana do gpt-image-2.\n"
+                "Przejdz na: platform.openai.com/settings/organization/general\n"
+                "i kliknij Start przy 'Individual'. Potem poczekaj ~15 minut."
+            ) from None
+        raise
 
     images = _extract_images(result)
     if not images:
-        raise RuntimeError("API zwróciło pustą odpowiedź — sprawdź klucz API i prompt.")
+        raise RuntimeError("API zwrocilo pusta odpowiedz.")
     return images
 
 
@@ -111,26 +105,35 @@ def edit_image(
     mask_bytes: Optional[bytes] = None,
     n: int = 1,
 ) -> List[bytes]:
-    """Edytuje/inpaintuje obraz. Zwraca listę bajtów PNG."""
+    """Edytuje/inpaintuje obraz."""
     if not prompt.strip():
-        raise ValueError("Prompt nie może być pusty.")
+        raise ValueError("Prompt nie moze byc pusty.")
 
     client = _client()
     full_prompt = _enrich_prompt(prompt, quality)
-    size = _build_size(aspect_ratio, resolution)
+    size = config.get_size(aspect_ratio, resolution)
 
     kwargs = dict(
         model=config.MODEL_ID,
         prompt=full_prompt,
-        image=_named_buf(image_bytes, "image.png"),
+        image=_named_buf(image_bytes),
         size=size,
         n=n,
     )
     if mask_bytes:
         kwargs["mask"] = _named_buf(mask_bytes, "mask.png")
 
-    result = client.images.edit(**kwargs)
+    try:
+        result = client.images.edit(**kwargs)
+    except Exception as e:
+        if "must be verified" in str(e) or "403" in str(e):
+            raise RuntimeError(
+                "Organizacja wymaga weryfikacji. Kliknij Start/Individual na "
+                "platform.openai.com/settings/organization/general"
+            ) from None
+        raise
+
     images = _extract_images(result)
     if not images:
-        raise RuntimeError("API zwróciło pustą odpowiedź.")
+        raise RuntimeError("API zwrocilo pusta odpowiedz.")
     return images

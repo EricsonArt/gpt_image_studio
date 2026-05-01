@@ -155,9 +155,9 @@ def render_sidebar():
     native_res = config.native_resolution(resolution)
     w, h = config.SIZE_MAP[(aspect_ratio, native_res)]
     if config.needs_upscale(resolution):
-        st.sidebar.caption(f"📐 Native: {w}×{h} → upscale → {w*2}×{h*2}")
+        st.sidebar.caption(f"Wymiar: {w}x{h} -> upscale -> {w*2}x{h*2}")
     else:
-        st.sidebar.caption(f"📐 Wymiar: {w}×{h}")
+        st.sidebar.caption(f"Wymiar: {w}x{h}")
 
     # Cost preview
     cost = cost_calculator.estimate_cost(quality, resolution, batch_size)
